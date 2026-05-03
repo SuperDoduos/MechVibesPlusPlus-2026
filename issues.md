@@ -1,6 +1,6 @@
 # Mechvibes++ Known Issues
 
-Please [join our discord](https://discord.gg/CZ8Qgth2SW) if you have any issues that <u>are not</u> listed here.
+Please [join our discord](https://discord.gg/8x3bzActmx) if you have any issues that <u>are not</u> listed here.
 
 ## Software issues
 
@@ -16,4 +16,4 @@ Please [join our discord](https://discord.gg/CZ8Qgth2SW) if you have any issues 
 
 Check out this small [FAQ Page](doc/faq.md) for information on microphone routing and other versions.
 
-Otherwise, please [join our discord](https://discord.gg/CZ8Qgth2SW) and ask us there!
+Otherwise, please [join our discord](https://discord.gg/8x3bzActmx) and ask us there!
