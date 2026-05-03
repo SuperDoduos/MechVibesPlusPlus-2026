@@ -8,7 +8,7 @@
 
 <br />
 <div align="center">
-  <a href="https://github.com/SuperDoduos/MechVibesPlusPlus">
+  <a href="https://github.com/SuperDoduos/MechVibesPlusPlus-2026">
     <img src="src/assets/icon.png" alt="MechVibes++ 2026" width="80" height="80">
   </a>
 
@@ -124,13 +124,13 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-[contributors-shield]: https://img.shields.io/github/contributors/SuperDoduos/MechVibesPlusPlus.svg?style=for-the-badge
-[contributors-url]: https://github.com/SuperDoduos/MechVibesPlusPlus/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/SuperDoduos/MechVibesPlusPlus.svg?style=for-the-badge
-[forks-url]: https://github.com/SuperDoduos/MechVibesPlusPlus/network/members
-[stars-shield]: https://img.shields.io/github/stars/SuperDoduos/MechVibesPlusPlus.svg?style=for-the-badge
-[stars-url]: https://github.com/SuperDoduos/MechVibesPlusPlus/stargazers
-[issues-shield]: https://img.shields.io/github/issues/SuperDoduos/MechVibesPlusPlus.svg?style=for-the-badge
-[issues-url]: https://github.com/SuperDoduos/MechVibesPlusPlus/issues
-[license-shield]: https://img.shields.io/github/license/SuperDoduos/MechVibesPlusPlus.svg?style=for-the-badge
-[license-url]: https://github.com/SuperDoduos/MechVibesPlusPlus/blob/main/LICENSE
+[contributors-shield]: https://img.shields.io/github/contributors/SuperDoduos/MechVibesPlusPlus-2026.svg?style=for-the-badge
+[contributors-url]: https://github.com/SuperDoduos/MechVibesPlusPlus-2026/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/SuperDoduos/MechVibesPlusPlus-2026.svg?style=for-the-badge
+[forks-url]: https://github.com/SuperDoduos/MechVibesPlusPlus-2026/network/members
+[stars-shield]: https://img.shields.io/github/stars/SuperDoduos/MechVibesPlusPlus-2026.svg?style=for-the-badge
+[stars-url]: https://github.com/SuperDoduos/MechVibesPlusPlus-2026/stargazers
+[issues-shield]: https://img.shields.io/github/issues/SuperDoduos/MechVibesPlusPlus-2026.svg?style=for-the-badge
+[issues-url]: https://github.com/SuperDoduos/MechVibesPlusPlus-2026/issues
+[license-shield]: https://img.shields.io/github/license/SuperDoduos/MechVibesPlusPlus-2026.svg?style=for-the-badge
+[license-url]: https://github.com/SuperDoduos/MechVibesPlusPlus-2026/blob/main/LICENSE

@@ -3,7 +3,7 @@
   "productName": "MechVibes++ 2026",
   "version": "3.0.0",
   "description": "Play mechanical keyboard sounds as you type.",
-  "repository": "https://github.com/SuperDoduos/MechVibesPlusPlus",
+  "repository": "https://github.com/SuperDoduos/MechVibesPlusPlus-2026",
   "main": "src/main.js",
   "packageManager": "npm@11.9.0",
   "scripts": {

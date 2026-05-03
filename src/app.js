@@ -501,7 +501,7 @@ function packsToOptions(packs, pack_list, korm) {
     }
 
     // check for new version
-    fetch('https://api.github.com/repos/SuperDoduos/MechVibesPlusPlus/releases/latest')
+    fetch('https://api.github.com/repos/SuperDoduos/MechVibesPlusPlus-2026/releases/latest')
       .then((res) => res.json())
       .then((json) => {
         if (isNewerVersion(json.tag_name, APP_VERSION)) {
