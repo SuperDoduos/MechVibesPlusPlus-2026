@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MechVibes++ 2026</title>
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+    <link rel="shortcut icon" type="image/png" href="./assets/icon.png" />
+    <link rel="stylesheet" href="./assets/milligram.min.css" />
+    <link rel="stylesheet" href="./assets/app.css" />
+  </head>
+
+  <body id="overall-body" style="padding: 2rem; background-color:#121212; user-select: none;">
+    <div id="app-logo">
+      <div id="logo">Loading...</div>
+    </div>
+
+    <div id="app-body" class="loading">
+      <table style="display: table">
+        <tbody>
+          <tr>
+            <td colspan="2">
+              <select id="keyboardpack-list" class="custom-input mb-0" style="width: 100%; margin-right: 10px; background-color:#1f1f1f; color:#adadad"></select>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2">
+              <select id="mousepack-list" class="custom-input mb-0 hidden" style="width: 100%; margin-right: 10px; background-color:#1f1f1f; color:#adadad"></select>
+              <div style="text-align: right">
+                <small>
+                  <a href="https://discord.gg/NzeXc8gMWW" class="open-in-browser">Join our Discord.</a>
+                </small>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td id="KeyVolSlider" style="width: 50%; color:#ebebeb">Keyboard Volume <span id="keyboard-volume-value-display" style="font-weight: bold; color:#ebebeb"></span></td>
+            <td style="width: 50%">
+              <input type="range" min="0" max="100" value="20" step="1" class="slider mb-0" id="keyvolume" style="width: 100%" />
+            </td>
+          </tr>
+          <tr>
+            <td id="MouseVolSlider" class="hidden" style="width: 50%; color:#ebebeb">Mouse Volume <span id="mouse-volume-value-display" class="hidden" style="font-weight: bold; color:#ebebeb"></span></td>
+            <td style="width: 50%">
+              <input type="range" min="0" max="100" value="20" step="1" class="slider mb-0 hidden" id="mousevolume" style="width: 100%" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="divider"></div>
+      <div style="color: #ebebeb; font-size: 12px; text-align: center">
+        <p>2026 update by <a href="https://github.com/SuperDoduos" class="open-in-browser">SuperDoduos</a>. Original project by <a href="https://github.com/PyroCalzone/MechVibesPlusPlus" class="open-in-browser">Pyro & Saturn</a>.</p>
+        <p>
+          <a href="https://mechvibes.com" class="open-in-browser">Support Original Mechvibes</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="https://github.com/SuperDoduos/MechVibesPlusPlus" class="open-in-browser">Our GitHub</a>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="https://ko-fi.com/pyrodevelopment" class="open-in-browser">Buy me a coffee</a>
+        </p>  
+        <p id="app-version" style="color: #9b9b9b">-</p>
+        <div id="update-available" class="hidden">
+          New version of MechVibes++ 2026 is available (<span id="new-version">-</span>)
+          <div style="margin-top: 5px">
+            <a href="https://github.com/SuperDoduos/MechVibesPlusPlus/releases/latest" class="open-in-browser">View Update on GitHub</a>
+          </div>
+      </div>
+      <div id="soundpack-bug" class="hidden" style="position:relative; top:10px">
+        <!-- OLD: One or more of your soundpacks are broken. They have not been loaded. -->
+        We have caught an error, if this reoccurs one or more of your soundpacks may be broken.<br>
+        Otherwise, you can safely ignore this message.
+      </div>
+      <div id="mouseSounds" class="hidden" style="position:relative; top:20px">
+        Mouse Sounds are disabled, to enable them please check system tray.
+      </div>
+    </div>
+  </body>
+</html>

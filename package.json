@@ -1,0 +1,103 @@
+{
+  "name": "mechvibesplusplus-2026",
+  "productName": "MechVibes++ 2026",
+  "version": "3.0.0",
+  "description": "Play mechanical keyboard sounds as you type.",
+  "repository": "https://github.com/SuperDoduos/MechVibesPlusPlus",
+  "main": "src/main.js",
+  "packageManager": "npm@11.9.0",
+  "scripts": {
+    "start": "electron .",
+    "build:quick": "electron-builder --dir",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "keywords": [],
+  "homepage": "https://mechvibes.com",
+  "author": {
+    "name": "SuperDoduos",
+    "url": "https://github.com/SuperDoduos"
+  },
+  "contributors": [
+    {
+      "name": "Pyro Calzone",
+      "email": "pyrocalzoneemail+MechVibesPlusPlus@gmail.com"
+    },
+    {
+      "name": "Saturn"
+    }
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "build": {
+    "appId": "com.mechvibesplusplus2026.app",
+    "npmRebuild": false,
+    "buildDependenciesFromSource": false,
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "include": "build/installer.nsh"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "requestedExecutionLevel": "requireAdministrator",
+      "icon": "src/assets/icon.png"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "src/assets/icon.png"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "snap",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "src/assets/icon.png"
+    }
+  },
+  "dependencies": {
+    "@electron/remote": "^2.1.3",
+    "electron-store": "^8.2.0",
+    "fs-extra": "^11.3.4",
+    "glob": "^13.0.6",
+    "howler": "^2.2.4",
+    "uiohook-napi": "^1.5.5"
+  },
+  "devDependencies": {
+    "electron": "^41.5.0",
+    "electron-builder": "^26.8.1"
+  }
+}
