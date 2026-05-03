@@ -40,6 +40,127 @@ let keyboardpacks = [];
 let mousepacks = [];
 let all_sound_files = {};
 
+const DEFAULT_KEYBOARD_VOLUME = 20;
+const DEFAULT_MOUSE_VOLUME = 20;
+const SOUND_WINDOW_MS = 100;
+const MAX_SOUND_STARTS_PER_WINDOW = 18;
+const MIN_KEY_SOUND_INTERVAL_MS = 6;
+const MIN_MOUSE_SOUND_INTERVAL_MS = 8;
+const MAX_ACTIVE_PER_SINGLE_HOWL = 8;
+const MAX_ACTIVE_PER_MULTI_HOWL = 4;
+const SINGLE_HOWL_POOL = 8;
+const MULTI_HOWL_POOL = 4;
+
+let keyboardVolume = normalizeVolumePercent(store.get(MV_KEY_VOL_LSID), DEFAULT_KEYBOARD_VOLUME);
+let mouseVolume = normalizeVolumePercent(store.get(MV_MOUSE_VOL_LSID), DEFAULT_MOUSE_VOLUME);
+let soundWindowStart = 0;
+let soundWindowCount = 0;
+const lastSoundAtByKey = new Map();
+const activeSoundIdsByHowl = new WeakMap();
+
+function normalizeVolumePercent(value, fallback) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return fallback;
+  }
+  return Math.min(100, Math.max(0, numericValue));
+}
+
+function volumeToHowler(value, fallback) {
+  return normalizeVolumePercent(value, fallback) / 100;
+}
+
+function createHowl(soundPath, sprite = null, pool = MULTI_HOWL_POOL) {
+  const options = {
+    src: [soundPath],
+    preload: true,
+    html5: false,
+    pool,
+  };
+
+  if (sprite) {
+    options.sprite = sprite;
+  }
+
+  return new Howl(options);
+}
+
+function canStartSound(soundKey, minIntervalMs) {
+  const now = Date.now();
+  if (now - soundWindowStart > SOUND_WINDOW_MS) {
+    soundWindowStart = now;
+    soundWindowCount = 0;
+  }
+
+  if (soundWindowCount >= MAX_SOUND_STARTS_PER_WINDOW) {
+    return false;
+  }
+
+  const lastSoundAt = lastSoundAtByKey.get(soundKey) || 0;
+  if (now - lastSoundAt < minIntervalMs) {
+    return false;
+  }
+
+  lastSoundAtByKey.set(soundKey, now);
+  soundWindowCount += 1;
+  return true;
+}
+
+function forgetActiveSoundId(sound, id) {
+  const activeIds = activeSoundIdsByHowl.get(sound);
+  if (!activeIds) {
+    return;
+  }
+
+  const index = activeIds.indexOf(id);
+  if (index > -1) {
+    activeIds.splice(index, 1);
+  }
+}
+
+function playHowlLimited(sound, spriteId, maxActive) {
+  const activeIds = activeSoundIdsByHowl.get(sound) || [];
+
+  while (activeIds.length >= maxActive) {
+    const oldestId = activeIds.shift();
+    if (oldestId !== undefined) {
+      sound.stop(oldestId);
+    }
+  }
+
+  const id = spriteId ? sound.play(spriteId) : sound.play();
+  if (id === null || id === undefined) {
+    return;
+  }
+
+  activeIds.push(id);
+  activeSoundIdsByHowl.set(sound, activeIds);
+  sound.once('end', () => forgetActiveSoundId(sound, id), id);
+  sound.once('stop', () => forgetActiveSoundId(sound, id), id);
+}
+
+function getSplitSpriteId(sound, baseSpriteId, downOrUp) {
+  if (!downOrUp || downOrUp === 'null' || !sound._sprite || !sound._sprite[baseSpriteId]) {
+    return baseSpriteId;
+  }
+
+  const splitSpriteId = `${baseSpriteId}-${downOrUp}`;
+  sound._mvppSplitSprites = sound._mvppSplitSprites || {};
+
+  if (!sound._mvppSplitSprites[splitSpriteId]) {
+    const [start, length] = sound._sprite[baseSpriteId];
+    const firstHalf = Math.floor(length / 2);
+    const secondHalf = Math.max(length - firstHalf, 1);
+
+    sound._sprite[splitSpriteId] = downOrUp === 'down'
+      ? [start, Math.max(firstHalf, 1)]
+      : [start + firstHalf, secondHalf];
+    sound._mvppSplitSprites[splitSpriteId] = true;
+  }
+
+  return splitSpriteId;
+}
+
 function getPackFolders(directory) {
   const pattern = path.join(directory, '*/').replace(/\\/g, '/');
   return globSync(pattern, { windowsPathsNoEscape: true });
@@ -127,7 +248,7 @@ async function loadPacks(status_display_elem, app_body) {
         if (key_define_type == 'single') {
           // define sound path
           const sound_path = path.join(folder, sound);
-          const sound_data = new Howl({ src: [sound_path], sprite: keycodesRemap(defines) });
+          const sound_data = createHowl(sound_path, keycodesRemap(defines), SINGLE_HOWL_POOL);
           Object.assign(pack_data, { sound: sound_data });
           all_sound_files[pack_data.pack_id] = false;
           // event when sound loaded
@@ -141,7 +262,7 @@ async function loadPacks(status_display_elem, app_body) {
             if (defines[kc]) {
               // define sound path
               const sound_path = path.join(folder, defines[kc]);
-              sound_data[kc] = new Howl({ src: [sound_path] });
+              sound_data[kc] = createHowl(sound_path, null, MULTI_HOWL_POOL);
               all_sound_files[`${pack_data.pack_id}-${kc}`] = false;
               // event when sound_data loaded
               sound_data[kc].once('load', function () {
@@ -187,7 +308,7 @@ async function loadPacks(status_display_elem, app_body) {
         if (key_define_type == 'single') {
           // define sound path
           const sound_path = path.join(folder, sound);
-          const sound_data = new Howl({ src: [sound_path], sprite: keycodesRemap(defines) });
+          const sound_data = createHowl(sound_path, keycodesRemap(defines), SINGLE_HOWL_POOL);
           Object.assign(pack_data, { sound: sound_data });
           all_sound_files[pack_data.pack_id] = false;
           // event when sound loaded
@@ -201,7 +322,7 @@ async function loadPacks(status_display_elem, app_body) {
             if (defines[kc]) {
               // define sound path
               const sound_path = path.join(folder, defines[kc]);
-              sound_data[kc] = new Howl({ src: [sound_path] });
+              sound_data[kc] = createHowl(sound_path, null, MULTI_HOWL_POOL);
               all_sound_files[`${pack_data.pack_id}-${kc}`] = false;
               // event when sound_data loaded
               sound_data[kc].once('load', function () {
@@ -406,23 +527,20 @@ function packsToOptions(packs, pack_list, korm) {
     };
 
     // display volume value
-    if (store.get(MV_KEY_VOL_LSID)) {
-      volume.value = store.get(MV_KEY_VOL_LSID);
-    };
-
-    volume_value.innerHTML = volume.value;
+    volume.value = keyboardVolume;
+    volume_value.innerHTML = keyboardVolume;
     volume.oninput = function (e) {
-      volume_value.innerHTML = this.value;
-      store.set(MV_KEY_VOL_LSID, this.value);
+      keyboardVolume = normalizeVolumePercent(this.value, DEFAULT_KEYBOARD_VOLUME);
+      volume_value.innerHTML = keyboardVolume;
+      store.set(MV_KEY_VOL_LSID, keyboardVolume);
     };
 
-    if (store.get(MV_MOUSE_VOL_LSID)) {
-      mouse_volume.value = store.get(MV_MOUSE_VOL_LSID);
-    }
-    mouse_volume_value.innerHTML = mouse_volume.value;
+    mouse_volume.value = mouseVolume;
+    mouse_volume_value.innerHTML = mouseVolume;
     mouse_volume.oninput = function (e) {
-      mouse_volume_value.innerHTML = this.value;
-      store.set(MV_MOUSE_VOL_LSID, this.value);
+      mouseVolume = normalizeVolumePercent(this.value, DEFAULT_MOUSE_VOLUME);
+      mouse_volume_value.innerHTML = mouseVolume;
+      store.set(MV_MOUSE_VOL_LSID, mouseVolume);
     };
 
     function removeOptions(selectElement) {
@@ -526,35 +644,31 @@ function packsToOptions(packs, pack_list, korm) {
         const sound_id = `${current_mouse_down}`;
 
         if (current_mouse_pack) {
-          playMouseSound(`${sound_id}`, store.get(MV_MOUSE_VOL_LSID), 'down')
+          playMouseSound(`${sound_id}`, mouseVolume, 'down')
         }
       }
     })
 
-    ipcRenderer.on('input:mouseup', () => {
-      if(playMouseSounds){
-        playMouseSound(`${current_mouse_down}`, store.get(MV_MOUSE_VOL_LSID), 'up')
+    ipcRenderer.on('input:mouseup', (_event, { button } = {}) => {
+      const mouseButton = button != null ? button : current_mouse_down;
+      if(playMouseSounds && mouseButton != null){
+        playMouseSound(`${mouseButton}`, mouseVolume, 'up')
       }
       current_mouse_down = null;
     })
 
 
 
-    var keyPressedList = []
+    const keyPressedSet = new Set();
 
 
     // if key released, clear current key
     ipcRenderer.on('input:keyup', (_event, { keycode }) => {
       if(playKeyupSound){
-        playSound(`${keycode}`, store.get(MV_KEY_VOL_LSID), playKeyupSound, 'up');
+        playSound(`${keycode}`, keyboardVolume, playKeyupSound, 'up');
       }
-      try{
-        keyPressedList.splice(keyPressedList.indexOf(keycode), 1);
-      }
-      catch{
-        console.log("Caught bad keypress")
-      }
-      if(keyPressedList.length < 1){        
+      keyPressedSet.delete(keycode);
+      if(keyPressedSet.size < 1){
         app_logo.classList.remove('pressed');
       }
     });
@@ -562,7 +676,7 @@ function packsToOptions(packs, pack_list, korm) {
     // key pressed, pack current key and play sound
     ipcRenderer.on('input:keydown', (_event, { keycode }) => {
       // if hold down a key, not repeat the sound
-      if (keyPressedList.includes(keycode)) {
+      if (keyPressedSet.has(keycode)) {
         return;
       }
 
@@ -573,7 +687,7 @@ function packsToOptions(packs, pack_list, korm) {
       const applicablekeys = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83]
       const nonapplicablekeys = [57, 29, 3613, 42, 54, 58, 28, 15, 14, 56, 3640]
 
-      keyPressedList.push(keycode);
+      keyPressedSet.add(keycode);
 
       // pack current pressed key
       if(randomSounds && !nonapplicablekeys.includes(keycode)){
@@ -590,10 +704,10 @@ function packsToOptions(packs, pack_list, korm) {
       // if object valid, pack volume and play sound
       if (current_keyboard_pack) {
         if(playKeyupSound){
-          playSound(`${current_sound_key}`, store.get(MV_KEY_VOL_LSID), playKeyupSound, 'down');
+          playSound(`${current_sound_key}`, keyboardVolume, playKeyupSound, 'down');
         }
         else{
-          playSound(sound_id, store.get(MV_KEY_VOL_LSID), playKeyupSound, 'null');
+          playSound(sound_id, keyboardVolume, playKeyupSound, 'null');
         }
       }
     });
@@ -603,9 +717,10 @@ function packsToOptions(packs, pack_list, korm) {
 // ==================================================
 // universal play function
 function playSound(sound_id, volume, playKeyupSound, downOrUp) {
+  if (!current_keyboard_pack) {
+    return;
+  }
 
-  var initOne
-  var initTwo
   const pack_compatibility = current_keyboard_pack.compatibility ? current_keyboard_pack.compatibility : false;
   var keycode = `keycode-${sound_id}`;
 
@@ -624,62 +739,33 @@ function playSound(sound_id, volume, playKeyupSound, downOrUp) {
     return;
   }
 
-      //!!Splitting sound up for non compat packs!! -- DOWN SOUND ONLY
-      var tempHoldings
-      if(playKeyupSound && !pack_compatibility && downOrUp == 'down'){
-        if(play_type == 'single'){
-          tempHoldings = sound['_sprite'][keycode]
-          initOne = sound['_sprite'][keycode][0] //Start Time
-          initTwo = sound['_sprite'][keycode][1] //Length
-            sound['_sprite'][keycode][1] = Math.floor(initTwo/2) //Length
-        }
-        else{
-          tempHoldings = sound['_sprite']['__default']
-          initOne = sound['_sprite']['__default'][0] //Start Time
-          initTwo = sound['_sprite']['__default'][1] //Length
-          sound['_sprite']['__default'][1] = Math.floor(initTwo/2) //Length
-        }
-      }
-
-      else if(playKeyupSound && !pack_compatibility && downOrUp == 'up'){
-        if(play_type == 'single'){
-          tempHoldings = sound['_sprite'][keycode]
-          initOne = sound['_sprite'][keycode][0] //Start Time
-          initTwo = sound['_sprite'][keycode][1] //Length
-            sound['_sprite'][keycode][0] = initOne+Math.floor((initTwo/2)) //Start Time
-            sound['_sprite'][keycode][1] = Math.floor(initTwo/2) //Length
-        }
-        else{
-          tempHoldings = sound['_sprite']['__default']
-          initOne = sound['_sprite']['__default'][0] //Start Time
-          initTwo = sound['_sprite']['__default'][1] //Length
-            sound['_sprite']['__default'][0] = initOne+Math.floor((initTwo/2)) //Start Time
-            sound['_sprite']['__default'][1] = Math.floor(initTwo/2) //Length
-        }
-      }
-
-
-  sound.volume(Number(volume / 100));
-  if (play_type == 'single') {
-    sound.play(keycode);
-  } else {
-    sound.play();
+  let spriteId = play_type == 'single' ? keycode : null;
+  if (playKeyupSound && !pack_compatibility && (downOrUp == 'down' || downOrUp == 'up')) {
+    spriteId = getSplitSpriteId(sound, play_type == 'single' ? keycode : '__default', downOrUp);
   }
 
-      //Resetting values for non compat packs
-      if(playKeyupSound && !pack_compatibility){
-        if(play_type=='single'){
-          sound['_sprite'][keycode][0] = initOne
-          sound['_sprite'][keycode][1] = initTwo
-        }
-        else{
-          sound['_sprite']['__default'][0] = initOne
-          sound['_sprite']['__default'][1] = initTwo
-        }
-      }
+  if (play_type == 'single' && (!sound._sprite || !sound._sprite[spriteId])) {
+    return;
+  }
+
+  const limiterKey = `keyboard:${current_keyboard_pack.pack_id}:${keycode}:${downOrUp || 'tap'}`;
+  if (!canStartSound(limiterKey, MIN_KEY_SOUND_INTERVAL_MS)) {
+    return;
+  }
+
+  sound.volume(volumeToHowler(volume, DEFAULT_KEYBOARD_VOLUME));
+  if (play_type == 'single') {
+    playHowlLimited(sound, spriteId, MAX_ACTIVE_PER_SINGLE_HOWL);
+  } else {
+    playHowlLimited(sound, spriteId, MAX_ACTIVE_PER_MULTI_HOWL);
+  }
 }
 
 function playMouseSound(mouseCode, volume, downOrUp){
+  if (!current_mouse_pack) {
+    return;
+  }
+
   var keycode = `keycode-${mouseCode}`;
 
   if(downOrUp == 'down'){
@@ -695,10 +781,19 @@ function playMouseSound(mouseCode, volume, downOrUp){
     return;
   }
 
-  sound.volume(Number(volume / 100));
+  if (play_type == 'single' && (!sound._sprite || !sound._sprite[keycode])) {
+    return;
+  }
+
+  const limiterKey = `mouse:${current_mouse_pack.pack_id}:${keycode}`;
+  if (!canStartSound(limiterKey, MIN_MOUSE_SOUND_INTERVAL_MS)) {
+    return;
+  }
+
+  sound.volume(volumeToHowler(volume, DEFAULT_MOUSE_VOLUME));
   if (play_type == 'single') {
-    sound.play(keycode);
+    playHowlLimited(sound, keycode, MAX_ACTIVE_PER_SINGLE_HOWL);
   } else {
-    sound.play();
+    playHowlLimited(sound, null, MAX_ACTIVE_PER_MULTI_HOWL);
   }
 }

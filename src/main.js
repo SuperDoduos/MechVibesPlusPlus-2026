@@ -27,6 +27,8 @@ var win;
 var tray = null;
 let isInputHookStarted = false;
 let isInputHookRegistered = false;
+const pressedKeys = new Set();
+const pressedMouseButtons = new Set();
 global.app_version = app.getVersion();
 global.app_title = APP_TITLE;
 global.keyboardcustom_dir = keyboardcustom_dir;
@@ -48,18 +50,32 @@ function registerInputHook() {
   }
 
   uIOhook.on('mousedown', ({ button }) => {
+    if (pressedMouseButtons.has(button)) {
+      return;
+    }
+    pressedMouseButtons.add(button);
     sendInputEvent('input:mousedown', { button });
   });
 
-  uIOhook.on('mouseup', () => {
-    sendInputEvent('input:mouseup');
+  uIOhook.on('mouseup', ({ button }) => {
+    if (!pressedMouseButtons.delete(button)) {
+      return;
+    }
+    sendInputEvent('input:mouseup', { button });
   });
 
   uIOhook.on('keyup', ({ keycode }) => {
+    if (!pressedKeys.delete(keycode)) {
+      return;
+    }
     sendInputEvent('input:keyup', { keycode });
   });
 
   uIOhook.on('keydown', ({ keycode }) => {
+    if (pressedKeys.has(keycode)) {
+      return;
+    }
+    pressedKeys.add(keycode);
     sendInputEvent('input:keydown', { keycode });
   });
 
@@ -80,6 +96,8 @@ function stopInputHook() {
   }
   uIOhook.stop();
   isInputHookStarted = false;
+  pressedKeys.clear();
+  pressedMouseButtons.clear();
 }
 
 function createWindow(show = true) {
