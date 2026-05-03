@@ -29,6 +29,7 @@ let isInputHookStarted = false;
 let isInputHookRegistered = false;
 const pressedKeys = new Set();
 const pressedMouseButtons = new Set();
+let shouldForwardMouseEvents = true;
 global.app_version = app.getVersion();
 global.app_title = APP_TITLE;
 global.keyboardcustom_dir = keyboardcustom_dir;
@@ -50,6 +51,9 @@ function registerInputHook() {
   }
 
   uIOhook.on('mousedown', ({ button }) => {
+    if (!shouldForwardMouseEvents) {
+      return;
+    }
     if (pressedMouseButtons.has(button)) {
       return;
     }
@@ -58,6 +62,10 @@ function registerInputHook() {
   });
 
   uIOhook.on('mouseup', ({ button }) => {
+    if (!shouldForwardMouseEvents) {
+      pressedMouseButtons.delete(button);
+      return;
+    }
     if (!pressedMouseButtons.delete(button)) {
       return;
     }
@@ -200,6 +208,7 @@ if (!gotTheLock) {
     const keyup_handler = new KeyupHandler(app);
     const mouse_handler = new MouseHandler(app);
     const random_handler = new RandomHandler(app);
+    shouldForwardMouseEvents = mouse_handler.is_mousesounds;
     registerInputHook();
 
     win.webContents.once('did-finish-load', () => {
@@ -277,6 +286,10 @@ if (!gotTheLock) {
         checked: mouse_handler.is_mousesounds,
         click: function () {
           mouse_handler.toggle();
+          shouldForwardMouseEvents = mouse_handler.is_mousesounds;
+          if (!shouldForwardMouseEvents) {
+            pressedMouseButtons.clear();
+          }
           win.webContents.send('MouseSounds', mouse_handler.is_mousesounds);
         },
       },

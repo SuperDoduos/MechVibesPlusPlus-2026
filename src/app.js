@@ -28,7 +28,6 @@ const APP_TITLE = remote.getGlobal('app_title') || 'MechVibes++ 2026';
 let current_keyboard_pack = null;
 let current_mouse_pack = null;
 let current_sound_key = null;
-let current_mouse_down = null;
 let is_muted = store.get('mechvibes-muted') || false;
 let is_keyup = store.get('mechvibes-keyup') || false;
 let is_mousesounds = store.get('mechvibes-mouse');
@@ -39,23 +38,26 @@ let is_random = store.get('mechvibes-random') || false;
 let keyboardpacks = [];
 let mousepacks = [];
 let all_sound_files = {};
+const pressedMouseButtons = new Set();
 
 const DEFAULT_KEYBOARD_VOLUME = 20;
 const DEFAULT_MOUSE_VOLUME = 20;
 const SOUND_WINDOW_MS = 100;
-const MAX_SOUND_STARTS_PER_WINDOW = 18;
+const MAX_KEY_SOUND_STARTS_PER_WINDOW = 18;
+const MAX_MOUSE_SOUND_STARTS_PER_WINDOW = 5;
 const MIN_KEY_SOUND_INTERVAL_MS = 6;
-const MIN_MOUSE_SOUND_INTERVAL_MS = 8;
+const MIN_MOUSE_SOUND_INTERVAL_MS = 22;
 const MAX_ACTIVE_PER_SINGLE_HOWL = 8;
 const MAX_ACTIVE_PER_MULTI_HOWL = 4;
+const MAX_ACTIVE_MOUSE_SINGLE_HOWL = 2;
+const MAX_ACTIVE_MOUSE_MULTI_HOWL = 1;
 const SINGLE_HOWL_POOL = 8;
 const MULTI_HOWL_POOL = 4;
+const MOUSE_SINGLE_HOWL_POOL = 4;
+const MOUSE_MULTI_HOWL_POOL = 2;
 
 let keyboardVolume = normalizeVolumePercent(store.get(MV_KEY_VOL_LSID), DEFAULT_KEYBOARD_VOLUME);
 let mouseVolume = normalizeVolumePercent(store.get(MV_MOUSE_VOL_LSID), DEFAULT_MOUSE_VOLUME);
-let soundWindowStart = 0;
-let soundWindowCount = 0;
-const lastSoundAtByKey = new Map();
 const activeSoundIdsByHowl = new WeakMap();
 
 function normalizeVolumePercent(value, fallback) {
@@ -85,26 +87,35 @@ function createHowl(soundPath, sprite = null, pool = MULTI_HOWL_POOL) {
   return new Howl(options);
 }
 
-function canStartSound(soundKey, minIntervalMs) {
-  const now = Date.now();
-  if (now - soundWindowStart > SOUND_WINDOW_MS) {
-    soundWindowStart = now;
-    soundWindowCount = 0;
-  }
+function createSoundLimiter(maxStartsPerWindow, windowMs) {
+  let windowStart = 0;
+  let windowCount = 0;
+  const lastSoundAtByKey = new Map();
 
-  if (soundWindowCount >= MAX_SOUND_STARTS_PER_WINDOW) {
-    return false;
-  }
+  return function canStartLimitedSound(soundKey, minIntervalMs) {
+    const now = Date.now();
+    if (now - windowStart > windowMs) {
+      windowStart = now;
+      windowCount = 0;
+    }
 
-  const lastSoundAt = lastSoundAtByKey.get(soundKey) || 0;
-  if (now - lastSoundAt < minIntervalMs) {
-    return false;
-  }
+    if (windowCount >= maxStartsPerWindow) {
+      return false;
+    }
 
-  lastSoundAtByKey.set(soundKey, now);
-  soundWindowCount += 1;
-  return true;
+    const lastSoundAt = lastSoundAtByKey.get(soundKey) || 0;
+    if (now - lastSoundAt < minIntervalMs) {
+      return false;
+    }
+
+    lastSoundAtByKey.set(soundKey, now);
+    windowCount += 1;
+    return true;
+  };
 }
+
+const canStartKeyboardSound = createSoundLimiter(MAX_KEY_SOUND_STARTS_PER_WINDOW, SOUND_WINDOW_MS);
+const canStartMouseSound = createSoundLimiter(MAX_MOUSE_SOUND_STARTS_PER_WINDOW, SOUND_WINDOW_MS);
 
 function forgetActiveSoundId(sound, id) {
   const activeIds = activeSoundIdsByHowl.get(sound);
@@ -308,7 +319,7 @@ async function loadPacks(status_display_elem, app_body) {
         if (key_define_type == 'single') {
           // define sound path
           const sound_path = path.join(folder, sound);
-          const sound_data = createHowl(sound_path, keycodesRemap(defines), SINGLE_HOWL_POOL);
+          const sound_data = createHowl(sound_path, keycodesRemap(defines), MOUSE_SINGLE_HOWL_POOL);
           Object.assign(pack_data, { sound: sound_data });
           all_sound_files[pack_data.pack_id] = false;
           // event when sound loaded
@@ -322,7 +333,7 @@ async function loadPacks(status_display_elem, app_body) {
             if (defines[kc]) {
               // define sound path
               const sound_path = path.join(folder, defines[kc]);
-              sound_data[kc] = createHowl(sound_path, null, MULTI_HOWL_POOL);
+              sound_data[kc] = createHowl(sound_path, null, MOUSE_MULTI_HOWL_POOL);
               all_sound_files[`${pack_data.pack_id}-${kc}`] = false;
               // event when sound_data loaded
               sound_data[kc].once('load', function () {
@@ -609,6 +620,7 @@ function packsToOptions(packs, pack_list, korm) {
         mouseNotification.classList.add('hidden');
       } else {
         playMouseSounds = false
+        pressedMouseButtons.clear();
         mouseslider.classList.add('hidden');
         mousepack_list.classList.add('hidden');
         mouse_volume_value.classList.add('hidden');
@@ -635,13 +647,12 @@ function packsToOptions(packs, pack_list, korm) {
 
     ipcRenderer.on('input:mousedown', (_event, { button }) => {
       if(playMouseSounds){
-        if (current_mouse_down != null && current_mouse_down == button) {
+        if (pressedMouseButtons.has(button)) {
           return;
         }
 
-        current_mouse_down = button;
-
-        const sound_id = `${current_mouse_down}`;
+        pressedMouseButtons.add(button);
+        const sound_id = `${button}`;
 
         if (current_mouse_pack) {
           playMouseSound(`${sound_id}`, mouseVolume, 'down')
@@ -650,11 +661,11 @@ function packsToOptions(packs, pack_list, korm) {
     })
 
     ipcRenderer.on('input:mouseup', (_event, { button } = {}) => {
-      const mouseButton = button != null ? button : current_mouse_down;
+      const mouseButton = button != null ? button : pressedMouseButtons.values().next().value;
+      pressedMouseButtons.delete(mouseButton);
       if(playMouseSounds && mouseButton != null){
         playMouseSound(`${mouseButton}`, mouseVolume, 'up')
       }
-      current_mouse_down = null;
     })
 
 
@@ -749,7 +760,7 @@ function playSound(sound_id, volume, playKeyupSound, downOrUp) {
   }
 
   const limiterKey = `keyboard:${current_keyboard_pack.pack_id}:${keycode}:${downOrUp || 'tap'}`;
-  if (!canStartSound(limiterKey, MIN_KEY_SOUND_INTERVAL_MS)) {
+  if (!canStartKeyboardSound(limiterKey, MIN_KEY_SOUND_INTERVAL_MS)) {
     return;
   }
 
@@ -785,15 +796,15 @@ function playMouseSound(mouseCode, volume, downOrUp){
     return;
   }
 
-  const limiterKey = `mouse:${current_mouse_pack.pack_id}:${keycode}`;
-  if (!canStartSound(limiterKey, MIN_MOUSE_SOUND_INTERVAL_MS)) {
+  const limiterKey = `mouse:${current_mouse_pack.pack_id}:${mouseCode}`;
+  if (!canStartMouseSound(limiterKey, MIN_MOUSE_SOUND_INTERVAL_MS)) {
     return;
   }
 
   sound.volume(volumeToHowler(volume, DEFAULT_MOUSE_VOLUME));
   if (play_type == 'single') {
-    playHowlLimited(sound, keycode, MAX_ACTIVE_PER_SINGLE_HOWL);
+    playHowlLimited(sound, keycode, MAX_ACTIVE_MOUSE_SINGLE_HOWL);
   } else {
-    playHowlLimited(sound, null, MAX_ACTIVE_PER_MULTI_HOWL);
+    playHowlLimited(sound, null, MAX_ACTIVE_MOUSE_MULTI_HOWL);
   }
 }
