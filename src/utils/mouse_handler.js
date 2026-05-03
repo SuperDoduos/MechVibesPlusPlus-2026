@@ -8,7 +8,8 @@ class startupHandler {
   }
 
   get is_mousesounds() {
-    return store.get(this.MV_MOUSESOUNDS_LSID);
+    const isEnabled = store.get(this.MV_MOUSESOUNDS_LSID);
+    return isEnabled === undefined ? true : isEnabled;
   }
 
   enable() {
